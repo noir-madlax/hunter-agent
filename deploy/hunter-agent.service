@@ -1,0 +1,18 @@
+[Unit]
+Description=Hunter Agent Next.js service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/hunter-agent/current
+Environment=NODE_ENV=production
+Environment=PORT=3003
+Environment=HOSTNAME=127.0.0.1
+EnvironmentFile=-/opt/hunter-agent/shared/.env.production
+ExecStart=/opt/node-v20.11.1/bin/node /opt/hunter-agent/current/node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3003
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,42 @@
+{
+  "name": "recruiting-agent-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "policy:eval": "node scripts/evaluate-policy-benchmark.mjs",
+    "hunter:regression": "node scripts/evaluate-hunter-regression.mjs",
+    "codex:accuracy": "node scripts/evaluate-agent-codex-accuracy.mjs",
+    "agent-runs:prune": "node scripts/prune-agent-run-output.mjs",
+    "feedback-loops:check": "node scripts/run-feedback-loop-check.mjs",
+    "feedback-loops:check:dry": "node scripts/run-feedback-loop-check.mjs --dry-run",
+    "prisma:generate": "prisma generate",
+    "db:init": "sqlite3 prisma/dev.db < scripts/init-db.sql",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "acorn": "^8.16.0",
+    "lightningcss": "^1.32.0",
+    "lucide-react": "^1.14.0",
+    "next": "16.2.4",
+    "openai": "^6.35.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "prisma": "^6.19.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

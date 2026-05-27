@@ -1,0 +1,318 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  name           String
+  clientCompany  String?
+  roleTitle      String?
+  status         String   @default("job_brief")
+  funnelStatus   String   @default("job_brief")
+  longlistCount  Int      @default(0)
+  screenedCount  Int      @default(0)
+  shortlistCount Int      @default(0)
+  riskCount      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  jobBrief              JobBrief?
+  talentPersona         TalentPersona?
+  searchMap             SearchMap?
+  candidates            Candidate[]
+  recommendationReports RecommendationReport[]
+  agentRuns             AgentRun[]
+  projectMemories       ProjectMemory[]
+  scoringModelVersions  ScoringModelVersion[]
+  outreachEvents        OutreachEvent[]
+  personaVersions       PersonaVersion[]
+  feedbackLoopRuns      FeedbackLoopRun[]
+}
+
+model JobBrief {
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  rawInput        String
+  roleTitle       String
+  clientCompany   String?
+  salaryBudget    String?
+  reportingLine   String?
+  businessContext String?
+  structuredJson  String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model TalentPersona {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  mustHaveJson   String
+  niceToHaveJson String
+  riskJson       String
+  structuredJson String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model SearchMap {
+  id                   String   @id @default(cuid())
+  projectId            String   @unique
+  targetIndustriesJson String
+  targetCompaniesJson  String
+  targetTitlesJson     String
+  keywordsJson         String
+  exclusionsJson       String
+  structuredJson       String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Candidate {
+  id                  String    @id @default(cuid())
+  projectId           String
+  name                String?
+  currentCompany      String?
+  currentTitle        String?
+  rawProfile          String
+  status              String    @default("longlist")
+  externalSource      String?
+  externalCandidateId String?
+  snapshotJson        String?
+  funnelStatus        String    @default("longlist")
+  addedToProjectAt    DateTime  @default(now())
+  // Outreach lifecycle (Module 12 feedback loop). All nullable; populated as candidate progresses.
+  // decisionStage values: outreached | replied | conversed | recommended | interviewing | offer | hired | dropped
+  decisionStage       String?
+  // outreachChannel values: wechat | phone | linkedin | maimai | email | other
+  outreachChannel     String?
+  // outreachResult values: no_response | read_no_reply | declined | willing | conversed
+  outreachResult      String?
+  // dropReasonCode values D1-D8 — see src/lib/outreach-feedback.ts
+  dropReasonCode      String?
+  dropReasonNote      String?
+  // compRealityVsTarget values: in_budget | slightly_over | far_over | below_budget | unknown
+  compRealityVsTarget String?
+  outreachedAt        DateTime?
+  lastStageChangeAt   DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  screeningResults      ScreeningResult[]
+  recommendationReports RecommendationReport[]
+  outreachEvents        OutreachEvent[]
+
+  @@unique([projectId, externalSource, externalCandidateId])
+  @@index([projectId, decisionStage])
+  @@index([projectId, dropReasonCode])
+}
+
+model ScreeningResult {
+  id                  String   @id @default(cuid())
+  candidateId         String
+  recommendation      String
+  score               Int
+  structuredJson      String
+  dimensionScoresJson String   @default("{}")
+  evidenceJson        String   @default("[]")
+  risksJson           String   @default("[]")
+  missingInfoJson     String   @default("[]")
+  questionsJson       String   @default("[]")
+  modelMode           String   @default("local_rules")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model RecommendationReport {
+  id             String   @id @default(cuid())
+  projectId      String
+  candidateId    String?
+  title          String
+  markdown       String
+  structuredJson String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  candidate Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+}
+
+model AgentRun {
+  id          String    @id @default(cuid())
+  projectId   String
+  type        String
+  trigger     String
+  status      String    @default("done")
+  summary     String?
+  inputJson   String    @default("{}")
+  outputJson  String    @default("{}")
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  steps     AgentStep[]
+  evidences AgentEvidence[]
+
+  @@index([projectId, createdAt])
+}
+
+model AgentStep {
+  id          String    @id @default(cuid())
+  runId       String
+  skillName   String
+  status      String    @default("done")
+  inputJson   String    @default("{}")
+  outputJson  String    @default("{}")
+  order       Int       @default(0)
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  run AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, order])
+}
+
+model AgentEvidence {
+  id           String   @id @default(cuid())
+  runId        String
+  sourceType   String
+  sourceName   String?
+  sourceStatus String   @default("derived")
+  content      String
+  confidence   Int      @default(50)
+  metadataJson String   @default("{}")
+  createdAt    DateTime @default(now())
+
+  run AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, createdAt])
+}
+
+model ProjectMemory {
+  id        String   @id @default(cuid())
+  projectId String
+  role      String
+  title     String?
+  content   String
+  source    String   @default("conversation")
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+}
+
+model ScoringModelVersion {
+  id                  String   @id @default(cuid())
+  projectId           String
+  version             Int
+  reason              String?
+  dimensionsJson      String   @default("[]")
+  requiredOutputsJson String   @default("[]")
+  createdAt           DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, version])
+  @@index([projectId, createdAt])
+}
+
+// Append-only log of outreach lifecycle state changes per candidate.
+// Each row records a single transition; lifecycleDays is derived by querying min(occurredAt).
+model OutreachEvent {
+  id                  String   @id @default(cuid())
+  candidateId         String
+  projectId           String
+  // Stage transition. fromStage may be null for the first outreach event.
+  fromStage           String?
+  toStage             String
+  channel             String?
+  result              String?
+  dropReasonCode      String?
+  dropReasonNote      String?
+  compRealityVsTarget String?
+  // Free-form structured metadata (interviewer feedback, salary numbers, etc.)
+  metadataJson        String   @default("{}")
+  occurredAt          DateTime @default(now())
+  createdAt           DateTime @default(now())
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId, occurredAt])
+  @@index([projectId, occurredAt])
+  @@index([projectId, dropReasonCode])
+}
+
+// Persona evolution log: v1 -> v2 -> v3, never overwritten.
+// TalentPersona stays as the "latest pointer"; this table is the immutable history.
+model PersonaVersion {
+  id                String   @id @default(cuid())
+  projectId         String
+  version           Int
+  // Which feedback run produced this version (nullable for v1 initial draft).
+  feedbackLoopRunId String?  @unique
+  mustHaveJson      String
+  niceToHaveJson    String
+  riskJson          String
+  structuredJson    String
+  // Diff from prior version: list of {field, oldValue, newValue, evidence}.
+  changesJson       String   @default("[]")
+  // Human-readable explanation of why this version exists.
+  reasoningMarkdown String?
+  createdAt         DateTime @default(now())
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  feedbackLoopRun FeedbackLoopRun? @relation(fields: [feedbackLoopRunId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, version])
+  @@index([projectId, createdAt])
+}
+
+// One row per reflow event (every 5-10 drop samples triggers one).
+// Holds the aggregated reason distribution + recommended actions + the persona version it produced.
+model FeedbackLoopRun {
+  id                     String   @id @default(cuid())
+  projectId              String
+  // Total candidates evaluated in this loop window.
+  sampleSize             Int
+  droppedCount           Int      @default(0)
+  // Aggregated counts per D1-D8 code: {"D1": 5, "D2": 3, ...}
+  reasonDistributionJson String   @default("{}")
+  // Funnel snapshot at trigger time: {"outreached": N, "replied": N, "recommended": N, ...}
+  funnelSnapshotJson     String   @default("{}")
+  // Suggested actions back to Stage 1/2/3/5 per module 12 rules.
+  recommendedActionsJson String   @default("[]")
+  // Pre-mortem assumptions verified / refuted in this loop.
+  assumptionVerdictsJson String   @default("[]")
+  // Full markdown report for client/team sync.
+  reportMarkdown         String?
+  // Status: pending_review | applied | dismissed
+  status                 String   @default("pending_review")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  personaVersion PersonaVersion?
+
+  @@index([projectId, createdAt])
+}
