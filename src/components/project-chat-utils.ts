@@ -70,6 +70,57 @@ export function truncateMessagePreview(content: string, maxLength = MESSAGE_PREV
   return `${normalized.slice(0, maxLength).trimEnd()}\n\n...`;
 }
 
+type CandidateJudgementPayload = {
+  type?: string;
+  decision?: unknown;
+  candidateId?: unknown;
+  externalCandidateId?: unknown;
+  name?: unknown;
+  company?: unknown;
+  title?: unknown;
+  reason?: unknown;
+};
+
+function displayValue(value: unknown, fallback = "未填") {
+  const text = typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+  return text || fallback;
+}
+
+export function formatCandidateJudgementInsight(content: string) {
+  const marker = "候选人裁判JSON：";
+  const markerIndex = content.indexOf(marker);
+  if (markerIndex === -1) return content;
+
+  const jsonText = content.slice(markerIndex + marker.length).trim();
+  if (!jsonText) return content;
+
+  try {
+    const parsed = JSON.parse(jsonText) as CandidateJudgementPayload;
+    if (parsed.type !== "candidate_judgement") return content;
+
+    const decision = displayValue(parsed.decision, "未填判断");
+    const name = displayValue(parsed.name, "未命名候选人");
+    const company = displayValue(parsed.company);
+    const title = displayValue(parsed.title);
+    const externalCandidateId = displayValue(parsed.externalCandidateId, "-");
+    const candidateId = displayValue(parsed.candidateId, "-");
+    const reason = displayValue(parsed.reason, "未填写原因");
+
+    return [
+      `候选人裁判：${decision}`,
+      "",
+      `- 候选人：${name}`,
+      `- 公司：${company}`,
+      `- 职位：${title}`,
+      `- 人才库 ID：${externalCandidateId}`,
+      `- 系统 ID：${candidateId}`,
+      `- 原因：${reason}`,
+    ].join("\n");
+  } catch {
+    return content;
+  }
+}
+
 export function formatDate(value: string) {
   return new Date(value).toLocaleString("zh-CN", {
     timeZone: APP_TIME_ZONE,

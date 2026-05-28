@@ -11,6 +11,8 @@ import {
   type CandidateSnapshot,
 } from "@/lib/project-funnel";
 import { prisma } from "@/lib/prisma";
+import { acquireProjectLock } from "@/lib/project-lock";
+import { verifyAuth } from "@/lib/session-auth";
 
 export const runtime = "nodejs";
 
@@ -28,6 +30,9 @@ function parseJson<T>(value: string | null | undefined, fallback: T): T {
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await verifyAuth())) {
+    return Response.json({ error: "Authentication required" }, { status: 401 });
+  }
   const { id: projectId } = await params;
   const body = await request.json().catch(() => ({}));
   const parsed = runScreeningSchema.safeParse(body);
@@ -36,6 +41,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return Response.json({ error: parsed.error.issues[0]?.message || "Invalid screening payload" }, { status: 400 });
   }
 
+  const lock = acquireProjectLock(projectId, "screening");
+  if (!lock.ok) {
+    return Response.json(
+      { error: `项目已有 ${lock.type} 任务正在执行（${Math.round(lock.sinceMs / 1000)}s 前启动），请稍后再触发。` },
+      { status: 409 },
+    );
+  }
+
+  try {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
@@ -82,24 +96,28 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const mode = screenedWithModel.mode;
       const structuredJson = JSON.stringify(result);
 
-      await prisma.screeningResult.create({
-        data: {
-          candidateId: candidate.id,
-          recommendation: result.recommendation,
-          score: result.score,
-          structuredJson,
-          dimensionScoresJson: JSON.stringify(result.dimensionScores),
-          evidenceJson: JSON.stringify(result.evidence),
-          risksJson: JSON.stringify(result.risks),
-          missingInfoJson: JSON.stringify(result.missingInfo),
-          questionsJson: JSON.stringify(result.questions),
-          modelMode: mode,
-        },
-      });
-      await prisma.candidate.update({
-        where: { id: candidate.id },
-        data: { status: "screened" },
-      });
+      // 重跑评分：删旧记录再写新的，避免 DB 累积冗余（50 候选 × 5 次 rerun = 250 行旧数据）
+      await prisma.$transaction([
+        prisma.screeningResult.deleteMany({ where: { candidateId: candidate.id } }),
+        prisma.screeningResult.create({
+          data: {
+            candidateId: candidate.id,
+            recommendation: result.recommendation,
+            score: result.score,
+            structuredJson,
+            dimensionScoresJson: JSON.stringify(result.dimensionScores),
+            evidenceJson: JSON.stringify(result.evidence),
+            risksJson: JSON.stringify(result.risks),
+            missingInfoJson: JSON.stringify(result.missingInfo),
+            questionsJson: JSON.stringify(result.questions),
+            modelMode: mode,
+          },
+        }),
+        prisma.candidate.update({
+          where: { id: candidate.id },
+          data: { status: "screened" },
+        }),
+      ]);
       screened += 1;
     } catch (error) {
       failed.push({
@@ -123,4 +141,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     },
     { status: failed.length ? 207 : 200 },
   );
+  } finally {
+    lock.release();
+  }
 }

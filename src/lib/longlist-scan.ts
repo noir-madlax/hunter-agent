@@ -1024,13 +1024,19 @@ export async function scanProjectLonglist(projectId: string, options: ScanOption
   const archived = 0;
   const matchedExternalIds = matches.map((match) => String(match.record.id));
 
+  // 一次性预取所有 existing candidate，避免每个 match 都跑 findFirst（50 round-trips → 1）
+  const existingRows = matchedExternalIds.length
+    ? await prisma.candidate.findMany({
+        where: { projectId, externalSource: "persol", externalCandidateId: { in: matchedExternalIds } },
+        select: { id: true, externalCandidateId: true, status: true, funnelStatus: true, screeningResults: { take: 1, select: { id: true } } },
+      })
+    : [];
+  const existingByExternalId = new Map(existingRows.map((row) => [row.externalCandidateId ?? "", row]));
+
   for (const match of matches) {
     const snapshot = stripSearchText(match.record);
     const externalCandidateId = String(snapshot.id);
-    const existing = await prisma.candidate.findFirst({
-      where: { projectId, externalSource: "persol", externalCandidateId },
-      select: { id: true, status: true, funnelStatus: true, screeningResults: { take: 1, select: { id: true } } },
-    });
+    const existing = existingByExternalId.get(externalCandidateId) ?? null;
     const reactivatedStatus =
       existing?.status === "stale_scan" || existing?.status === "archived" || existing?.funnelStatus === "archived"
         ? existing.screeningResults.length

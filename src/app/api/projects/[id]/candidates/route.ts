@@ -7,6 +7,7 @@ import {
   type CandidateSnapshot,
 } from "@/lib/project-funnel";
 import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/session-auth";
 
 export const runtime = "nodejs";
 
@@ -55,6 +56,9 @@ const addCandidatesSchema = z.object({
 });
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await verifyAuth())) {
+    return Response.json({ error: "Authentication required" }, { status: 401 });
+  }
   const { id: projectId } = await params;
   const body = await request.json().catch(() => null);
   const parsed = addCandidatesSchema.safeParse(body);

@@ -53,6 +53,7 @@ import type {
 import {
   cleanFetchInput,
   fetchWithTimeout,
+  formatCandidateJudgementInsight,
   formatDate,
   formatDateTime,
   readStageFromUrl,
@@ -311,7 +312,8 @@ export function ProjectChatWorkspace({
     if (!silent) setActionLoading("longlist-scan");
     setError(null);
     try {
-      const response = await fetchWithTimeout(`/api/projects/${id}/longlist/scan`, { method: "POST" });
+      // Persol 62k 全表扫 + LLM 评分链可能 30s-2min，禁用 12s 超时
+      const response = await fetch(cleanFetchInput(`/api/projects/${id}/longlist/scan`), { method: "POST" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "人才库自动扫描失败");
       if (payload.project) updateProjectState(payload.project as ProjectPayload);
@@ -834,7 +836,8 @@ export function ProjectChatWorkspace({
     setActionLoading("screening");
     setError(null);
     try {
-      const response = await fetchWithTimeout(`/api/projects/${project.id}/screening/run`, {
+      // 50 候选 × LLM 串行可能跑 10+ 分钟，禁用 12s 超时；保持长连接直到后端返回
+      const response = await fetch(cleanFetchInput(`/api/projects/${project.id}/screening/run`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rerun: true }),
@@ -906,7 +909,8 @@ export function ProjectChatWorkspace({
     setActionLoading("reports");
     setError(null);
     try {
-      const response = await fetchWithTimeout(`/api/projects/${project.id}/reports`, {
+      // 多人报告生成可能 30s+；禁用 12s 超时
+      const response = await fetch(cleanFetchInput(`/api/projects/${project.id}/reports`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ candidateIds: shortlist.map((candidate) => candidate.id) }),
@@ -1050,13 +1054,14 @@ export function ProjectChatWorkspace({
 
   function appendUserMessage(content: string, title: string) {
     if (!content.trim()) return;
+    const displayContent = formatCandidateJudgementInsight(content);
     setConversationLog((current) => [
-      ...(current.at(-1)?.content === content && current.at(-1)?.title === title
+      ...(current.at(-1)?.content === displayContent && current.at(-1)?.title === title
         ? current.slice(0, -1)
         : current),
       {
         id: `${Date.now()}-${current.length}`,
-        content,
+        content: displayContent,
         title,
         time: "now",
         timestamp: formatDateTime(),
@@ -1630,7 +1635,7 @@ export function ProjectChatWorkspace({
           if (event.kind === "memory") {
             return (
               <Message key={event.id} role="user" title={event.memory.title || "用户输入"} time="memory" timestamp={formatDateTime(event.memory.createdAt)}>
-                <MarkdownText content={truncateMessagePreview(event.memory.content)} enabled />
+                <MarkdownText content={truncateMessagePreview(formatCandidateJudgementInsight(event.memory.content))} enabled />
               </Message>
             );
           }
@@ -2111,7 +2116,7 @@ export function ProjectChatWorkspace({
 
   function renderConversationLog() {
     if (!conversationLog.length) return null;
-    const persisted = new Set((project?.projectMemories ?? []).map((memory) => memory.content));
+    const persisted = new Set((project?.projectMemories ?? []).map((memory) => formatCandidateJudgementInsight(memory.content)));
 
     return conversationLog
       .filter((entry) => !persisted.has(entry.content))

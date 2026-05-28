@@ -7,6 +7,7 @@ import { classifyProjectGaps } from "@/lib/intake-gaps";
 import type { JobAnalysis } from "@/lib/job-schema";
 import { prisma } from "@/lib/prisma";
 import { getProjectWithRelations, refreshProjectStats, serializeProject } from "@/lib/project-funnel";
+import { verifyAuth } from "@/lib/session-auth";
 
 export const runtime = "nodejs";
 
@@ -288,6 +289,9 @@ function streamProjectCreation(rawInput: string) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!(await verifyAuth())) {
+    return Response.json({ error: "Authentication required" }, { status: 401 });
+  }
   const body = await request.json().catch(() => null);
   const parsed = requestSchema.safeParse(body);
 

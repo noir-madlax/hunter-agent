@@ -8,6 +8,7 @@ import {
   serializeProject,
 } from "@/lib/project-funnel";
 import { prisma } from "@/lib/prisma";
+import { verifyAuth } from "@/lib/session-auth";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,9 @@ const reportSchema = z.object({
 });
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await verifyAuth())) {
+    return Response.json({ error: "Authentication required" }, { status: 401 });
+  }
   const { id: projectId } = await params;
   const body = await request.json().catch(() => ({}));
   const parsed = reportSchema.safeParse(body);
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         data: {
           title,
           markdown,
-          structuredJson: JSON.stringify({ screeningResultId: screening.id, source: "local_rules" }),
+          structuredJson: JSON.stringify({ screeningResultId: screening.id, source: screening.modelMode || "local_rules" }),
         },
       });
       updated += 1;
@@ -71,7 +75,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           candidateId: candidate.id,
           title,
           markdown,
-          structuredJson: JSON.stringify({ screeningResultId: screening.id, source: "local_rules" }),
+          structuredJson: JSON.stringify({ screeningResultId: screening.id, source: screening.modelMode || "local_rules" }),
         },
       });
       created += 1;
