@@ -1033,6 +1033,17 @@ export async function scanProjectLonglist(projectId: string, options: ScanOption
     : [];
   const existingByExternalId = new Map(existingRows.map((row) => [row.externalCandidateId ?? "", row]));
 
+  // 在循环中累积，循环结束后批量 createMany 一次性写入
+  const pendingEvidence: Array<{
+    runId: string;
+    sourceType: string;
+    sourceName: string;
+    sourceStatus: string;
+    content: string;
+    confidence: number;
+    metadataJson: string;
+  }> = [];
+
   for (const match of matches) {
     const snapshot = stripSearchText(match.record);
     const externalCandidateId = String(snapshot.id);
@@ -1102,29 +1113,32 @@ export async function scanProjectLonglist(projectId: string, options: ScanOption
     else added += 1;
 
     if (options.runId) {
-      await prisma.agentEvidence.create({
-        data: {
-          runId: options.runId,
-          sourceType: "talent_db",
-          sourceName: `${candidateData.name || "未命名"} / ${candidateData.currentCompany || "未填公司"}`,
-          sourceStatus: "talent_db_match",
-          content: `人才库匹配分 ${match.score}（${match.gate}）：${match.reasons.slice(0, 4).join("；") || "基础字段命中项目画像"}${match.concerns.length ? `；风险：${match.concerns.slice(0, 2).join("；")}` : ""}`,
-          confidence: Math.min(92, Math.max(45, match.score)),
-          metadataJson: JSON.stringify({
-            externalSource: "persol",
-            externalCandidateId,
-            company: candidateData.currentCompany,
-            title: candidateData.currentTitle,
-            score: match.score,
-            reasons: match.reasons,
-            concerns: match.concerns,
-            gate: match.gate,
-            consultantFeedback: match.consultantFeedback,
-            policyTrace: match.policyTrace,
-          }),
-        },
+      pendingEvidence.push({
+        runId: options.runId,
+        sourceType: "talent_db",
+        sourceName: `${candidateData.name || "未命名"} / ${candidateData.currentCompany || "未填公司"}`,
+        sourceStatus: "talent_db_match",
+        content: `人才库匹配分 ${match.score}（${match.gate}）：${match.reasons.slice(0, 4).join("；") || "基础字段命中项目画像"}${match.concerns.length ? `；风险：${match.concerns.slice(0, 2).join("；")}` : ""}`,
+        confidence: Math.min(92, Math.max(45, match.score)),
+        metadataJson: JSON.stringify({
+          externalSource: "persol",
+          externalCandidateId,
+          company: candidateData.currentCompany,
+          title: candidateData.currentTitle,
+          score: match.score,
+          reasons: match.reasons,
+          concerns: match.concerns,
+          gate: match.gate,
+          consultantFeedback: match.consultantFeedback,
+          policyTrace: match.policyTrace,
+        }),
       });
     }
+  }
+
+  // 单次 createMany 替代 50× create，节省 49 个 round-trip
+  if (pendingEvidence.length) {
+    await prisma.agentEvidence.createMany({ data: pendingEvidence });
   }
 
   const staleResult = await prisma.candidate.updateMany({
