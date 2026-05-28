@@ -42,7 +42,10 @@ export function FeedbackLoopsClient({
   compact?: boolean;
 }) {
   const [loops, setLoops] = useState<LoopPayload[]>(initialLoops);
-  const [loading, setLoading] = useState(false);
+  // Initial loading state derived from compact prop so the compact-mode refresh
+  // effect doesn't have to call setLoading(true) synchronously in its body —
+  // that triggers react-hooks/set-state-in-effect cascading-render warning.
+  const [loading, setLoading] = useState(compact);
   const [triggering, setTriggering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -51,7 +54,6 @@ export function FeedbackLoopsClient({
   useEffect(() => {
     if (!compact) return;
     let cancelled = false;
-    setLoading(true);
     fetchLoops(projectId)
       .then((refreshed) => {
         if (!cancelled) setLoops(refreshed);
