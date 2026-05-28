@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 import { DROP_REASON_META } from "@/lib/outreach-feedback";
 
@@ -45,6 +46,7 @@ export function FeedbackLoopsClient({
   const [triggering, setTriggering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!compact) return;
@@ -90,6 +92,7 @@ export function FeedbackLoopsClient({
 
   async function updateStatus(loopId: string, status: "applied" | "dismissed") {
     setUpdatingId(loopId);
+    if (status === "applied") setApplyingId(loopId);
     setError(null);
     try {
       const res = await fetch(`/api/projects/${projectId}/feedback-loops/${loopId}`, {
@@ -99,7 +102,7 @@ export function FeedbackLoopsClient({
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `请求失败 (${res.status})`);
+        throw new Error((body as { error?: string }).error ?? `请求失败 (${res.status})`);
       }
       const refreshed = await fetchLoops(projectId);
       setLoops(refreshed);
@@ -107,6 +110,7 @@ export function FeedbackLoopsClient({
       setError(err instanceof Error ? err.message : "更新失败");
     } finally {
       setUpdatingId(null);
+      setApplyingId(null);
     }
   }
 
@@ -218,14 +222,14 @@ export function FeedbackLoopsClient({
               ) : null}
 
               {loop.status === "pending_review" ? (
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
                   <button
                     type="button"
                     className="btn btn-primary"
                     disabled={updatingId === loop.id}
                     onClick={() => void updateStatus(loop.id, "applied")}
                   >
-                    采纳建议
+                    {applyingId === loop.id ? "AI 更新画像中…" : "采纳建议"}
                   </button>
                   <button
                     type="button"
@@ -233,8 +237,13 @@ export function FeedbackLoopsClient({
                     disabled={updatingId === loop.id}
                     onClick={() => void updateStatus(loop.id, "dismissed")}
                   >
-                    存档不采纳
+                    {updatingId === loop.id && applyingId !== loop.id ? "存档中…" : "存档不采纳"}
                   </button>
+                  {applyingId === loop.id ? (
+                    <span style={{ fontSize: 10, opacity: 0.55 }}>
+                      正在调用 LLM 更新画像，约需 10-30 秒…
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
               {loop.personaVersion ? (
@@ -247,6 +256,17 @@ export function FeedbackLoopsClient({
           ))}
         </ul>
       )}
+
+      {compact ? (
+        <div style={{ marginTop: 12, fontSize: 11, textAlign: "right" }}>
+          <Link
+            href={`/projects/${projectId}/feedback-loops`}
+            style={{ opacity: 0.6 }}
+          >
+            查看完整反哺历史 →
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }
