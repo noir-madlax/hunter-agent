@@ -15,7 +15,6 @@ import {
   Mail,
   PanelLeftClose,
   PanelLeftOpen,
-  PanelRight,
   Phone,
   RefreshCw,
   Search,
@@ -414,7 +413,7 @@ function CandidateProfileModal({
                         <div className="space-y-2">
                           <h4 className="text-xs font-semibold text-[var(--ha-ink-2)]">📅 融合合并后工作履历时间线 (去重去噪)</h4>
                           <div className="space-y-2">
-                            {govExps.map((exp: any, idx: number) => (
+                            {govExps.map((exp, idx) => (
                               <div key={`${exp.company}-${idx}`} className="flex gap-3 rounded-lg border border-[var(--ha-line)] bg-[var(--ha-bg-card)] p-3">
                                 <div className="mt-1.5 flex flex-col items-center">
                                   <span className={`size-2 rounded-full ${idx === 0 ? 'bg-[var(--ha-good)]' : 'bg-[var(--ha-line)]'}`} />
@@ -445,7 +444,7 @@ function CandidateProfileModal({
                         <div className="space-y-2">
                           <h4 className="text-xs font-semibold text-[var(--ha-ink-2)]">💬 结构化分类互动备注 Timeline</h4>
                           <div className="space-y-2">
-                            {govNotes.timeline.slice(0, 4).map((note: any, idx: number) => (
+                            {govNotes.timeline.slice(0, 4).map((note, idx) => (
                               <div key={`${note.id}-${idx}`} className="rounded border border-[var(--ha-line)] bg-[var(--ha-bg-card)] p-3">
                                 <div className="flex justify-between text-[10.5px] text-[var(--ha-ink-2)]">
                                   <span className="font-bold text-[var(--ha-accent)]">{note.category}</span>

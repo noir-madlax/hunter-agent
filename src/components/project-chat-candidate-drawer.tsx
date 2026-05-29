@@ -562,7 +562,7 @@ export function CandidateProfileDrawer({
                   <div style={{ display: 'grid', gap: '8px', marginTop: '12px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ha-ink-2)' }}>📅 融合合并后工作履历时间线 (去重去噪)</div>
                     <div className="resume-timeline" style={{ gap: '8px' }}>
-                      {govExps.map((exp: any, idx: number) => (
+                      {govExps.map((exp, idx) => (
                         <div key={`${exp.company}-${idx}`} className="timeline-item" style={{ padding: '8px 12px' }}>
                           <div className="timeline-dot" style={{ backgroundColor: idx === 0 ? 'var(--ha-good)' : 'var(--ha-line)' }} />
                           <div style={{ flex: 1 }}>
@@ -591,7 +591,7 @@ export function CandidateProfileDrawer({
                   <div style={{ display: 'grid', gap: '8px', marginTop: '12px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ha-ink-2)' }}>💬 结构化分类互动备注 Timeline</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {govNotes.timeline.slice(0, 4).map((note: any, idx: number) => (
+                      {govNotes.timeline.slice(0, 4).map((note, idx) => (
                         <div key={`${note.id}-${idx}`} style={{ padding: '8px 10px', border: '1px solid var(--ha-line-soft)', borderRadius: '4px', backgroundColor: 'var(--ha-bg-card)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: 'var(--ha-ink-3)', marginBottom: '4px' }}>
                             <span style={{ fontWeight: 600, color: 'var(--ha-accent)' }}>{note.category}</span>
