@@ -119,37 +119,19 @@ export function OutreachLifecyclePanel({
   }
 
   return (
-    <section
-      className="profile-section"
-      style={{
-        border: "1px solid var(--ha-line)",
-        borderRadius: 8,
-        padding: 16,
-        marginBottom: 20,
-      }}
-    >
-      <div
-        className="profile-section-head"
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-      >
-        <strong style={{ fontSize: 12 }}>触达 / 反哺 (Module 12)</strong>
-        {savedAt ? <span style={{ fontSize: 10, opacity: 0.6 }}>已保存 {savedAt}</span> : null}
+    <section className="profile-section lifecycle-panel">
+      <div className="profile-section-head lifecycle-panel-head">
+        <strong className="lifecycle-panel-title">触达 / 反哺 (Module 12)</strong>
+        {savedAt ? <span className="lifecycle-panel-saved">已保存 {savedAt}</span> : null}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 10,
-          marginTop: 12,
-        }}
-      >
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
-          <span style={{ opacity: 0.7 }}>当前阶段 *</span>
+      <div className="lifecycle-form-grid">
+        <label className="lifecycle-field">
+          <span className="lifecycle-field-label required">当前阶段 *</span>
           <select
+            className="lifecycle-select"
             value={stage}
             onChange={(e) => setStage(e.target.value as DecisionStage | "")}
-            style={{ fontSize: 12, padding: "4px 6px" }}
           >
             <option value="">—</option>
             {DECISION_STAGES.map((s) => (
@@ -160,12 +142,12 @@ export function OutreachLifecyclePanel({
           </select>
         </label>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
-          <span style={{ opacity: 0.7 }}>触达渠道</span>
+        <label className="lifecycle-field">
+          <span className="lifecycle-field-label">触达渠道</span>
           <select
+            className="lifecycle-select"
             value={channel}
             onChange={(e) => setChannel(e.target.value as OutreachChannel | "")}
-            style={{ fontSize: 12, padding: "4px 6px" }}
           >
             <option value="">—</option>
             {OUTREACH_CHANNELS.map((c) => (
@@ -176,12 +158,12 @@ export function OutreachLifecyclePanel({
           </select>
         </label>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
-          <span style={{ opacity: 0.7 }}>触达结果</span>
+        <label className="lifecycle-field">
+          <span className="lifecycle-field-label">触达结果</span>
           <select
+            className="lifecycle-select"
             value={result}
             onChange={(e) => setResult(e.target.value as OutreachResult | "")}
-            style={{ fontSize: 12, padding: "4px 6px" }}
           >
             <option value="">—</option>
             {OUTREACH_RESULTS.map((r) => (
@@ -192,12 +174,12 @@ export function OutreachLifecyclePanel({
           </select>
         </label>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
-          <span style={{ opacity: 0.7 }}>薪酬期望 vs 预算</span>
+        <label className="lifecycle-field">
+          <span className="lifecycle-field-label">薪酬期望 vs 预算</span>
           <select
+            className="lifecycle-select"
             value={comp}
             onChange={(e) => setComp(e.target.value as CompRealityVsTarget | "")}
-            style={{ fontSize: 12, padding: "4px 6px" }}
           >
             <option value="">—</option>
             {COMP_REALITY_VALUES.map((c) => (
@@ -209,20 +191,12 @@ export function OutreachLifecyclePanel({
         </label>
 
         {isDropped ? (
-          <label
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              fontSize: 11,
-              gridColumn: "span 2",
-            }}
-          >
-            <span style={{ opacity: 0.7, color: "var(--ha-accent)" }}>流失归因 (D1-D8) *</span>
+          <label className="lifecycle-field wide">
+            <span className="lifecycle-field-label required">流失归因 (D1-D8) *</span>
             <select
+              className="lifecycle-select"
               value={dropCode}
               onChange={(e) => setDropCode(e.target.value as DropReasonCode | "")}
-              style={{ fontSize: 12, padding: "4px 6px" }}
             >
               <option value="">— 选择 —</option>
               {DROP_REASON_CODES.map((c) => (
@@ -232,7 +206,7 @@ export function OutreachLifecyclePanel({
               ))}
             </select>
             {dropCode ? (
-              <span style={{ fontSize: 10, opacity: 0.55 }}>
+              <span className="lifecycle-field-hint">
                 反哺：{DROP_REASON_META[dropCode].feedsBackTo}
               </span>
             ) : null}
@@ -240,34 +214,22 @@ export function OutreachLifecyclePanel({
         ) : null}
 
         {isDropped ? (
-          <label
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              fontSize: 11,
-              gridColumn: "span 2",
-            }}
-          >
-            <span style={{ opacity: 0.7 }}>备注（可选）</span>
+          <label className="lifecycle-field wide">
+            <span className="lifecycle-field-label">备注（可选）</span>
             <textarea
+              className="lifecycle-textarea"
               value={dropNote}
               onChange={(e) => setDropNote(e.target.value)}
               rows={2}
               placeholder="具体细节，例如「期望年薪 130w，预算 100w」"
-              style={{ fontSize: 12, padding: "4px 6px", resize: "vertical" }}
             />
           </label>
         ) : null}
       </div>
 
-      {error ? (
-        <div className="error-banner" style={{ marginTop: 10, fontSize: 11 }}>
-          {error}
-        </div>
-      ) : null}
+      {error ? <div className="error-banner">{error}</div> : null}
 
-      <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+      <div className="lifecycle-actions">
         <button
           type="button"
           className="btn btn-primary"
